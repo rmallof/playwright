@@ -17,8 +17,9 @@
 import * as channels from '../protocol/channels';
 import { ChannelOwner } from './channelOwner';
 import { Protocol } from '../server/chromium/protocol';
+import * as api from '../../types/types';
 
-export class CDPSession extends ChannelOwner<channels.CDPSessionChannel, channels.CDPSessionInitializer> {
+export class CDPSession extends ChannelOwner<channels.CDPSessionChannel, channels.CDPSessionInitializer> implements api.CDPSession {
   static from(cdpSession: channels.CDPSessionChannel): CDPSession {
     return (cdpSession as any)._object;
   }
@@ -47,15 +48,15 @@ export class CDPSession extends ChannelOwner<channels.CDPSessionChannel, channel
     method: T,
     params?: Protocol.CommandParameters[T]
   ): Promise<Protocol.CommandReturnValues[T]> {
-    return this._wrapApiCall('cdpSession.send', async () => {
-      const result = await this._channel.send({ method, params });
+    return this._wrapApiCall('cdpSession.send', async (channel: channels.CDPSessionChannel) => {
+      const result = await channel.send({ method, params });
       return result.result as Protocol.CommandReturnValues[T];
     });
   }
 
   async detach() {
-    return this._wrapApiCall('cdpSession.detach', async () => {
-      return this._channel.detach();
+    return this._wrapApiCall('cdpSession.detach', async (channel: channels.CDPSessionChannel) => {
+      return channel.detach();
     });
   }
 }

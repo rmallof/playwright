@@ -180,6 +180,7 @@ describe('page screenshot', (suite, { browserName, headful }) => {
 
   it('should work with a mobile viewport', (test, { browserName }) => {
     test.skip(browserName === 'firefox');
+    test.fixme(browserName === 'chromium');
   }, async ({browser, server}) => {
     const context = await browser.newContext({ viewport: { width: 320, height: 480 }, isMobile: true });
     const page = await context.newPage();
@@ -292,14 +293,25 @@ describe('page screenshot', (suite, { browserName, headful }) => {
     expect(error.message).toContain('path: unsupported mime type "text/plain"');
   });
 
+  it('quality option should throw for png', async ({page}) => {
+    const error = await page.screenshot({ quality: 10 }).catch(e => e);
+    expect(error.message).toContain('options.quality is unsupported for the png');
+  });
+
+  it('zero quality option should throw for png', async ({page}) => {
+    const error = await page.screenshot({ quality: 0, type: 'png' }).catch(e => e);
+    expect(error.message).toContain('options.quality is unsupported for the png');
+  });
+
   it('should prefer type over extension', async ({page, testInfo}) => {
     const outputPath = testInfo.outputPath('file.png');
     const buffer = await page.screenshot({ path: outputPath, type: 'jpeg' });
     expect([buffer[0], buffer[1], buffer[2]]).toEqual([0xFF, 0xD8, 0xFF]);
   });
 
-  it('should work with large size', test => {
+  it('should work with large size', (test, {browserName, headful, platform}) => {
     test.slow('Large screenshot is slow');
+    test.fixme(browserName === 'chromium' && headful === true && platform === 'linux', 'Chromium has gpu problems on linux with large screnshots');
   }, async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.evaluate(() => {

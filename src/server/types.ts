@@ -15,12 +15,8 @@
  * limitations under the License.
  */
 
-export type Size = { width: number, height: number };
-export type Point = { x: number, y: number };
-export type Rect = Size & Point;
-export type Quad = [ Point, Point, Point, Point ];
-
-export type TimeoutOptions = { timeout?: number };
+import { Size, Point, Rect, TimeoutOptions } from '../common/types';
+export { Size, Point, Rect, Quad, URLMatch, TimeoutOptions } from '../common/types';
 
 export type WaitForElementOptions = TimeoutOptions & { state?: 'attached' | 'detached' | 'visible' | 'hidden' };
 
@@ -57,8 +53,6 @@ export type PageScreencastOptions = {
   height: number,
   outputFile: string,
 };
-
-export type URLMatch = string | RegExp | ((url: URL) => boolean);
 
 export type Credentials = {
   username: string;
@@ -191,6 +185,7 @@ export type NormalizedFulfillResponse = {
 };
 
 export type NormalizedContinueOverrides = {
+  url?: string,
   method?: string,
   headers?: HeadersArray,
   postData?: Buffer,
@@ -220,6 +215,7 @@ export type SetNetworkCookieParam = {
 };
 
 export type BrowserContextOptions = {
+  sdkLanguage: string,
   viewport?: Size,
   noDefaultViewport?: boolean,
   ignoreHTTPSErrors?: boolean,
@@ -247,8 +243,8 @@ export type BrowserContextOptions = {
     path: string
   },
   proxy?: ProxySettings,
-  _tracePath?: string,
-  _traceResourcesPath?: string,
+  _traceDir?: string,
+  _debugName?: string,
 };
 
 export type EnvArray = { name: string, value: string }[];
@@ -269,11 +265,14 @@ type LaunchOptionsBase = {
   downloadsPath?: string,
   chromiumSandbox?: boolean,
   slowMo?: number,
+  useWebSocket?: boolean,
 };
-export type LaunchOptions = LaunchOptionsBase & UIOptions & {
+export type LaunchOptions = LaunchOptionsBase & {
   firefoxUserPrefs?: { [key: string]: string | number | boolean },
 };
 export type LaunchPersistentOptions = LaunchOptionsBase & BrowserContextOptions;
+
+export type ProtocolLogger = (direction: 'send' | 'receive', message: object) => void;
 
 export type SerializedAXNode = {
   role: string,
@@ -323,6 +322,22 @@ export type Error = {
   stack?: string,
 };
 
-export type UIOptions = {
-  slowMo?: number;
+export type NameValueList = {
+  name: string;
+  value: string;
+}[];
+
+export type OriginStorage = {
+  origin: string;
+  localStorage: NameValueList;
 };
+
+export type StorageState = {
+  cookies: NetworkCookie[],
+  origins: OriginStorage[]
+}
+
+export type SetStorageState = {
+  cookies?: SetNetworkCookieParam[],
+  origins?: OriginStorage[]
+}

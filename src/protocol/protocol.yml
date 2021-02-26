@@ -12,12 +12,57 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+StackFrame:
+  type: object
+  properties:
+    file: string
+    line: number?
+    column: number?
+    function: string?
 
 # This object can be send with any rpc call in the "metadata" field.
+
 Metadata:
   type: object
   properties:
-    stack: string?
+    stack:
+      type: array?
+      items: StackFrame
+    apiName: string?
+
+
+WaitForEventInfo:
+  type: object
+  properties:
+    waitId: string
+    phase:
+      type: enum
+      literals:
+      - before
+      - after
+      - log
+    name: string?
+    stack:
+      type: array?
+      items: StackFrame
+    message: string?
+    error: string?
+
+
+Point:
+  type: object
+  properties:
+    x: number
+    y: number
+
+
+Rect:
+  type: object
+  properties:
+    x: number
+    y: number
+    width: number
+    height: number
 
 
 SerializedValue:
@@ -113,6 +158,59 @@ AXNode:
       items: AXNode
 
 
+SetNetworkCookie:
+  type: object
+  properties:
+    name: string
+    value: string
+    url: string?
+    domain: string?
+    path: string?
+    expires: number?
+    httpOnly: boolean?
+    secure: boolean?
+    sameSite:
+      type: enum?
+      literals:
+      - Strict
+      - Lax
+      - None
+
+
+NetworkCookie:
+  type: object
+  properties:
+    name: string
+    value: string
+    domain: string
+    path: string
+    expires: number
+    httpOnly: boolean
+    secure: boolean
+    sameSite:
+      type: enum
+      literals:
+      - Strict
+      - Lax
+      - None
+
+
+NameValue:
+  type: object
+  properties:
+    name: string
+    value: string
+
+
+OriginStorage:
+  type: object
+  properties:
+    origin: string
+    localStorage:
+      type: array
+      items: NameValue
+
+
 SerializedError:
   type: object
   properties:
@@ -130,10 +228,10 @@ Playwright:
 
   initializer:
     chromium: BrowserType
-    clank: BrowserType
     firefox: BrowserType
     webkit: BrowserType
-    electron: Electron?
+    android: Android
+    electron: Electron
     deviceDescriptors:
       type: array
       items:
@@ -216,11 +314,7 @@ BrowserType:
         timeout: number?
         env:
           type: array?
-          items:
-            type: object
-            properties:
-              name: string
-              value: string
+          items: NameValue
         headless: boolean?
         devtools: boolean?
         proxy:
@@ -240,6 +334,7 @@ BrowserType:
     launchPersistentContext:
       parameters:
         userDataDir: string
+        sdkLanguage: string
         executablePath: string?
         args:
           type: array?
@@ -254,11 +349,7 @@ BrowserType:
         timeout: number?
         env:
           type: array?
-          items:
-            type: object
-            properties:
-              name: string
-              value: string
+          items: NameValue
         headless: boolean?
         devtools: boolean?
         proxy:
@@ -294,11 +385,7 @@ BrowserType:
           items: string
         extraHTTPHeaders:
           type: array?
-          items:
-            type: object
-            properties:
-              name: string
-              value: string
+          items: NameValue
         offline: boolean?
         httpCredentials:
           type: object?
@@ -315,8 +402,8 @@ BrowserType:
           - dark
           - no-preference
         acceptDownloads: boolean?
-        _traceResourcesPath: string?
-        _tracePath: string?
+        _traceDir: string?
+        _debugName: string?
         recordVideo:
           type: object?
           properties:
@@ -334,6 +421,15 @@ BrowserType:
       returns:
         context: BrowserContext
 
+    connectOverCDP:
+      parameters:
+        sdkLanguage: string
+        wsEndpoint: string
+        slowMo: number?
+        timeout: number?
+      returns:
+        browser: Browser
+        defaultContext: BrowserContext?
 
 Browser:
   type: interface
@@ -348,6 +444,7 @@ Browser:
 
     newContext:
       parameters:
+        sdkLanguage: string
         noDefaultViewport: boolean?
         viewport:
           type: object?
@@ -371,11 +468,7 @@ Browser:
           items: string
         extraHTTPHeaders:
           type: array?
-          items:
-            type: object
-            properties:
-              name: string
-              value: string
+          items: NameValue
         offline: boolean?
         httpCredentials:
           type: object?
@@ -392,8 +485,8 @@ Browser:
           - light
           - no-preference
         acceptDownloads: boolean?
-        _traceResourcesPath: string?
-        _tracePath: string?
+        _traceDir: string?
+        _debugName: string?
         recordVideo:
           type: object?
           properties:
@@ -415,6 +508,15 @@ Browser:
             bypass: string?
             username: string?
             password: string?
+        storageState:
+          type: object?
+          properties:
+            cookies:
+              type: array?
+              items: SetNetworkCookie
+            origins:
+              type: array?
+              items: OriginStorage
       returns:
         context: BrowserContext
 
@@ -445,7 +547,7 @@ BrowserContext:
   type: interface
 
   initializer:
-    browserName: string
+    isChromium: boolean
 
   commands:
 
@@ -453,23 +555,7 @@ BrowserContext:
       parameters:
         cookies:
           type: array
-          items:
-            type: object
-            properties:
-              name: string
-              value: string
-              url: string?
-              domain: string?
-              path: string?
-              expires: number?
-              httpOnly: boolean?
-              secure: boolean?
-              sameSite:
-                type: enum?
-                literals:
-                - Strict
-                - Lax
-                - None
+          items: SetNetworkCookie
 
     addInitScript:
       parameters:
@@ -489,22 +575,7 @@ BrowserContext:
       returns:
         cookies:
           type: array
-          items:
-            type: object
-            properties:
-              name: string
-              value: string
-              domain: string
-              path: string
-              expires: number
-              httpOnly: boolean
-              secure: boolean
-              sameSite:
-                type: enum
-                literals:
-                - Strict
-                - Lax
-                - None
+          items: NetworkCookie
 
     exposeBinding:
       parameters:
@@ -534,11 +605,7 @@ BrowserContext:
       parameters:
         headers:
           type: array
-          items:
-            type: object
-            properties:
-              name: string
-              value: string
+          items: NameValue
 
     setGeolocation:
       parameters:
@@ -564,6 +631,30 @@ BrowserContext:
     setOffline:
       parameters:
         offline: boolean
+
+    storageState:
+      returns:
+        cookies:
+          type: array
+          items: NetworkCookie
+        origins:
+          type: array
+          items: OriginStorage
+
+    pause:
+      experimental: True
+
+    recorderSupplementEnable:
+      experimental: True
+      parameters:
+        language: string?
+        startRecording: boolean?
+        pauseOnNextStatement: boolean?
+        launchOptions: json?
+        contextOptions: json?
+        device: string?
+        saveStorage: string?
+        outputFile: string?
 
     crNewCDPSession:
       parameters:
@@ -596,8 +687,6 @@ BrowserContext:
       parameters:
         worker: Worker
 
-
-
 Page:
   type: interface
 
@@ -624,10 +713,6 @@ Page:
     setFileChooserInterceptedNoReply:
       parameters:
         intercepted: boolean
-
-    setWebSocketFramesReportingEnabledNoReply:
-      parameters:
-        enabled: boolean
 
     addInitScript:
       parameters:
@@ -711,13 +796,7 @@ Page:
         quality: number?
         omitBackground: boolean?
         fullPage: boolean?
-        clip:
-          type: object?
-          properties:
-            width: number
-            height: number
-            x: number
-            y: number
+        clip: Rect?
       returns:
         binary: binary
 
@@ -725,11 +804,7 @@ Page:
       parameters:
         headers:
           type: array
-          items:
-            type: object
-            properties:
-              name: string
-              value: string
+          items: NameValue
 
     setNetworkInterceptionEnabled:
       parameters:
@@ -1000,7 +1075,7 @@ Frame:
       parameters:
         selector: string
         expression: string
-        isFunction: boolean
+        isFunction: boolean?
         arg: SerializedArgument
       returns:
         value: SerializedValue
@@ -1009,7 +1084,7 @@ Frame:
       parameters:
         selector: string
         expression: string
-        isFunction: boolean
+        isFunction: boolean?
         arg: SerializedArgument
       returns:
         value: SerializedValue
@@ -1050,11 +1125,7 @@ Frame:
             - Control
             - Meta
             - Shift
-        position:
-          type: object?
-          properties:
-            x: number
-            y: number
+        position: Point?
         delay: number?
         button:
           type: enum?
@@ -1083,11 +1154,7 @@ Frame:
             - Control
             - Meta
             - Shift
-        position:
-          type: object?
-          properties:
-            x: number
-            y: number
+        position: Point?
         delay: number?
         button:
           type: enum?
@@ -1107,7 +1174,7 @@ Frame:
     evaluateExpression:
       parameters:
         expression: string
-        isFunction: boolean
+        isFunction: boolean?
         arg: SerializedArgument
         world:
           type: enum?
@@ -1120,7 +1187,7 @@ Frame:
     evaluateExpressionHandle:
       parameters:
         expression: string
-        isFunction: boolean
+        isFunction: boolean?
         arg: SerializedArgument
         world:
           type: enum?
@@ -1181,11 +1248,7 @@ Frame:
             - Control
             - Meta
             - Shift
-        position:
-          type: object?
-          properties:
-            x: number
-            y: number
+        position: Point?
         timeout: number?
 
     innerHTML:
@@ -1201,6 +1264,48 @@ Frame:
         timeout: number?
       returns:
         value: string
+
+    isChecked:
+      parameters:
+        selector: string
+        timeout: number?
+      returns:
+        value: boolean
+
+    isDisabled:
+      parameters:
+        selector: string
+        timeout: number?
+      returns:
+        value: boolean
+
+    isEnabled:
+      parameters:
+        selector: string
+        timeout: number?
+      returns:
+        value: boolean
+
+    isHidden:
+      parameters:
+        selector: string
+        timeout: number?
+      returns:
+        value: boolean
+
+    isVisible:
+      parameters:
+        selector: string
+        timeout: number?
+      returns:
+        value: boolean
+
+    isEditable:
+      parameters:
+        selector: string
+        timeout: number?
+      returns:
+        value: boolean
 
     press:
       parameters:
@@ -1284,11 +1389,7 @@ Frame:
             - Control
             - Meta
             - Shift
-        position:
-          type: object?
-          properties:
-            x: number
-            y: number
+        position: Point?
         timeout: number?
 
     textContent:
@@ -1320,7 +1421,7 @@ Frame:
     waitForFunction:
       parameters:
         expression: string
-        isFunction: boolean
+        isFunction: boolean?
         arg: SerializedArgument
         timeout: number?
         # When present, polls on interval. Otherwise, polls on raf.
@@ -1341,14 +1442,6 @@ Frame:
           - hidden
       returns:
         element: ElementHandle?
-
-    extendInjectedScript:
-      experimental: True
-      parameters:
-        source: string
-        arg: SerializedArgument
-      returns:
-        handle: JSHandle
 
   events:
 
@@ -1390,7 +1483,7 @@ Worker:
     evaluateExpression:
       parameters:
         expression: string
-        isFunction: boolean
+        isFunction: boolean?
         arg: SerializedArgument
       returns:
         value: SerializedValue
@@ -1398,7 +1491,7 @@ Worker:
     evaluateExpressionHandle:
       parameters:
         expression: string
-        isFunction: boolean
+        isFunction: boolean?
         arg: SerializedArgument
       returns:
         handle: JSHandle
@@ -1421,7 +1514,7 @@ JSHandle:
     evaluateExpression:
       parameters:
         expression: string
-        isFunction: boolean
+        isFunction: boolean?
         arg: SerializedArgument
       returns:
         value: SerializedValue
@@ -1429,7 +1522,7 @@ JSHandle:
     evaluateExpressionHandle:
       parameters:
         expression: string
-        isFunction: boolean
+        isFunction: boolean?
         arg: SerializedArgument
       returns:
         handle: JSHandle
@@ -1473,7 +1566,7 @@ ElementHandle:
       parameters:
         selector: string
         expression: string
-        isFunction: boolean
+        isFunction: boolean?
         arg: SerializedArgument
       returns:
         value: SerializedValue
@@ -1482,20 +1575,14 @@ ElementHandle:
       parameters:
         selector: string
         expression: string
-        isFunction: boolean
+        isFunction: boolean?
         arg: SerializedArgument
       returns:
         value: SerializedValue
 
     boundingBox:
       returns:
-        value:
-          type: object?
-          properties:
-            width: number
-            height: number
-            x: number
-            y: number
+        value: Rect?
 
     check:
       parameters:
@@ -1516,11 +1603,7 @@ ElementHandle:
             - Control
             - Meta
             - Shift
-        position:
-          type: object?
-          properties:
-            x: number
-            y: number
+        position: Point?
         delay: number?
         button:
           type: enum?
@@ -1548,11 +1631,7 @@ ElementHandle:
             - Control
             - Meta
             - Shift
-        position:
-          type: object?
-          properties:
-            x: number
-            y: number
+        position: Point?
         delay: number?
         button:
           type: enum?
@@ -1593,11 +1672,7 @@ ElementHandle:
             - Control
             - Meta
             - Shift
-        position:
-          type: object?
-          properties:
-            x: number
-            y: number
+        position: Point?
         timeout: number?
 
     innerHTML:
@@ -1607,6 +1682,30 @@ ElementHandle:
     innerText:
       returns:
         value: string
+
+    isChecked:
+      returns:
+        value: boolean
+
+    isDisabled:
+      returns:
+        value: boolean
+
+    isEditable:
+      returns:
+        value: boolean
+
+    isEnabled:
+      returns:
+        value: boolean
+
+    isHidden:
+      returns:
+        value: boolean
+
+    isVisible:
+      returns:
+        value: boolean
 
     ownerFrame:
       returns:
@@ -1700,11 +1799,7 @@ ElementHandle:
             - Control
             - Meta
             - Shift
-        position:
-          type: object?
-          properties:
-            x: number
-            y: number
+        position: Point?
         timeout: number?
 
     textContent:
@@ -1734,6 +1829,7 @@ ElementHandle:
           - stable
           - enabled
           - disabled
+          - editable
         timeout: number?
 
     waitForSelector:
@@ -1749,12 +1845,6 @@ ElementHandle:
           - hidden
       returns:
         element: ElementHandle?
-
-    createSelectorForTest:
-      parameters:
-        name: string
-      returns:
-        value: string?
 
 
 Request:
@@ -1798,14 +1888,11 @@ Route:
 
     continue:
       parameters:
+        url: string?
         method: string?
         headers:
           type: array?
-          items:
-            type: object
-            properties:
-              name: string
-              value: string
+          items: NameValue
         postData: binary?
 
     fulfill:
@@ -1814,11 +1901,7 @@ Route:
         status: number?
         headers:
           type: array?
-          items:
-            type: object
-            properties:
-              name: string
-              value: string
+          items: NameValue
         body: string?
         isBase64: boolean?
 
@@ -1890,7 +1973,7 @@ WebSocket:
         opcode: number
         data: string
 
-    error:
+    socketError:
       parameters:
         error: string
 
@@ -2027,7 +2110,6 @@ CDPSession:
         params: json?
 
 
-
 Electron:
   type: interface
 
@@ -2035,25 +2117,18 @@ Electron:
 
     launch:
       parameters:
-        executablePath: string
+        sdkLanguage: string
+        executablePath: string?
         args:
           type: array?
           items: string
         cwd: string?
         env:
           type: array?
-          items:
-            type: object
-            properties:
-              name: string
-              value: string
-        handleSIGINT: boolean?
-        handleSIGTERM: boolean?
-        handleSIGHUP: boolean?
+          items: NameValue
         timeout: number?
       returns:
         electronApplication: ElectronApplication
-
 
 
 ElectronApplication:
@@ -2061,16 +2136,10 @@ ElectronApplication:
 
   commands:
 
-    newBrowserWindow:
-      parameters:
-        arg: SerializedArgument
-      returns:
-        page: Page
-
     evaluateExpression:
       parameters:
         expression: string
-        isFunction: boolean
+        isFunction: boolean?
         arg: SerializedArgument
       returns:
         value: SerializedValue
@@ -2078,7 +2147,7 @@ ElectronApplication:
     evaluateExpressionHandle:
       parameters:
         expression: string
-        isFunction: boolean
+        isFunction: boolean?
         arg: SerializedArgument
       returns:
         handle: JSHandle
@@ -2100,3 +2169,336 @@ ElectronApplication:
         browserWindow: JSHandle
 
 
+
+Android:
+  type: interface
+
+  commands:
+
+    devices:
+      returns:
+        devices:
+          type: array
+          items: AndroidDevice
+
+    setDefaultTimeoutNoReply:
+      parameters:
+        timeout: number
+
+AndroidSocket:
+  type: interface
+
+  commands:
+    write:
+      parameters:
+        data: binary
+
+    close:
+
+  events:
+    data:
+      parameters:
+        data: binary
+    close:
+
+AndroidDevice:
+  type: interface
+
+  initializer:
+    model: string
+    serial: string
+
+  commands:
+    wait:
+      parameters:
+        selector: AndroidSelector
+        state:
+          type: enum?
+          literals:
+          - gone
+        timeout: number?
+
+    fill:
+      parameters:
+        selector: AndroidSelector
+        text: string
+        timeout: number?
+
+    tap:
+      parameters:
+        selector: AndroidSelector
+        duration: number?
+        timeout: number?
+
+    drag:
+      parameters:
+        selector: AndroidSelector
+        dest: Point
+        speed: number?
+        timeout: number?
+
+    fling:
+      parameters:
+        selector: AndroidSelector
+        direction:
+          type: enum
+          literals:
+          - up
+          - down
+          - left
+          - right
+        speed: number?
+        timeout: number?
+
+    longTap:
+      parameters:
+        selector: AndroidSelector
+        timeout: number?
+
+    pinchClose:
+      parameters:
+        selector: AndroidSelector
+        percent: number
+        speed: number?
+        timeout: number?
+
+    pinchOpen:
+      parameters:
+        selector: AndroidSelector
+        percent: number
+        speed: number?
+        timeout: number?
+
+    scroll:
+      parameters:
+        selector: AndroidSelector
+        direction:
+          type: enum
+          literals:
+          - up
+          - down
+          - left
+          - right
+        percent: number
+        speed: number?
+        timeout: number?
+
+    swipe:
+      parameters:
+        selector: AndroidSelector
+        direction:
+          type: enum
+          literals:
+          - up
+          - down
+          - left
+          - right
+        percent: number
+        speed: number?
+        timeout: number?
+
+    info:
+      parameters:
+        selector: AndroidSelector
+      returns:
+        info: AndroidElementInfo
+
+    screenshot:
+      returns:
+        binary: binary
+
+    inputType:
+      parameters:
+        text: string
+
+    inputPress:
+      parameters:
+        key: string
+
+    inputTap:
+      parameters:
+        point: Point
+
+    inputSwipe:
+      parameters:
+        segments:
+          type: array
+          items: Point
+        steps: number
+
+    inputDrag:
+      parameters:
+        from: Point
+        to: Point
+        steps: number
+
+    launchBrowser:
+      parameters:
+        sdkLanguage: string
+        pkg: string?
+        ignoreHTTPSErrors: boolean?
+        javaScriptEnabled: boolean?
+        bypassCSP: boolean?
+        userAgent: string?
+        locale: string?
+        timezoneId: string?
+        geolocation:
+          type: object?
+          properties:
+            longitude: number
+            latitude: number
+            accuracy: number?
+        permissions:
+          type: array?
+          items: string
+        extraHTTPHeaders:
+          type: array?
+          items: NameValue
+        offline: boolean?
+        httpCredentials:
+          type: object?
+          properties:
+            username: string
+            password: string
+        deviceScaleFactor: number?
+        isMobile: boolean?
+        hasTouch: boolean?
+        colorScheme:
+          type: enum?
+          literals:
+          - dark
+          - light
+          - no-preference
+        acceptDownloads: boolean?
+        _traceDir: string?
+        _debugName: string?
+        recordVideo:
+          type: object?
+          properties:
+            dir: string
+            size:
+              type: object?
+              properties:
+                width: number
+                height: number
+        recordHar:
+          type: object?
+          properties:
+            omitContent: boolean?
+            path: string
+        proxy:
+          type: object?
+          properties:
+            server: string
+            bypass: string?
+            username: string?
+            password: string?
+
+      returns:
+        context: BrowserContext
+
+    open:
+      parameters:
+        command: string
+      returns:
+        socket: AndroidSocket
+
+    shell:
+      parameters:
+        command: string
+      returns:
+        result: binary
+
+    installApk:
+      parameters:
+        file: binary
+        args:
+          type: array?
+          items: string
+
+    push:
+      parameters:
+        file: binary
+        path: string
+        mode: number?
+
+    setDefaultTimeoutNoReply:
+      parameters:
+        timeout: number
+
+    connectToWebView:
+      parameters:
+        sdkLanguage: string
+        pid: number
+      returns:
+        context: BrowserContext
+
+    close:
+
+  events:
+    webViewAdded:
+      parameters:
+        webView: AndroidWebView
+
+    webViewRemoved:
+      parameters:
+        pid: number
+
+
+AndroidWebView:
+  type: object
+  properties:
+    pid: number
+    pkg: string
+
+
+AndroidSelector:
+  type: object
+  properties:
+    checkable: boolean?
+    checked: boolean?
+    clazz: string?
+    clickable: boolean?
+    depth: number?
+    desc: string?
+    enabled: boolean?
+    focusable: boolean?
+    focused: boolean?
+    hasChild:
+      type: object?
+      properties:
+        selector: AndroidSelector
+    hasDescendant:
+      type: object?
+      properties:
+        selector: AndroidSelector
+        maxDepth: number?
+    longClickable: boolean?
+    pkg: string?
+    res: string?
+    scrollable: boolean?
+    selected: boolean?
+    text: string?
+
+
+AndroidElementInfo:
+  type: object
+  properties:
+    children:
+      type: array?
+      items: AndroidElementInfo
+    clazz: string
+    desc: string
+    res: string
+    pkg: string
+    text: string
+    bounds: Rect
+    checkable: boolean
+    checked: boolean
+    clickable: boolean
+    enabled: boolean
+    focusable: boolean
+    focused: boolean
+    longClickable: boolean
+    scrollable: boolean
+    selected: boolean

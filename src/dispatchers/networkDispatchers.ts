@@ -84,6 +84,7 @@ export class RouteDispatcher extends Dispatcher<Route, channels.RouteInitializer
 
   async continue(params: channels.RouteContinueParams): Promise<void> {
     await this._object.continue({
+      url: params.url,
       method: params.method,
       headers: params.headers,
       postData: params.postData ? Buffer.from(params.postData, 'base64') : undefined,
@@ -106,7 +107,7 @@ export class WebSocketDispatcher extends Dispatcher<WebSocket, channels.WebSocke
     });
     webSocket.on(WebSocket.Events.FrameSent, (event: { opcode: number, data: string }) => this._dispatchEvent('frameSent', event));
     webSocket.on(WebSocket.Events.FrameReceived, (event: { opcode: number, data: string }) => this._dispatchEvent('frameReceived', event));
-    webSocket.on(WebSocket.Events.Error, (error: string) => this._dispatchEvent('error', { error }));
+    webSocket.on(WebSocket.Events.SocketError, (error: string) => this._dispatchEvent('socketError', { error }));
     webSocket.on(WebSocket.Events.Close, () => this._dispatchEvent('close', {}));
   }
 }

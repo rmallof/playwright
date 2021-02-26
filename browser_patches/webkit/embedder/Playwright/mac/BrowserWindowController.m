@@ -670,6 +670,11 @@ static NSSet *dataTypes()
 {
     LOG(@"decidePolicyForNavigationAction");
 
+    if (navigationAction.shouldPerformDownload) {
+        decisionHandler(WKNavigationActionPolicyDownload);
+        return;
+    }
+
     if (navigationAction._canHandleRequest) {
         decisionHandler(WKNavigationActionPolicyAllow);
         return;
@@ -687,7 +692,7 @@ static NSSet *dataTypes()
 
     NSString *disposition = [[httpResponse allHeaderFields] objectForKey:@"Content-Disposition"];
     if (disposition && [disposition hasPrefix:@"attachment"]) {
-        decisionHandler(_WKNavigationResponsePolicyBecomeDownload);
+        decisionHandler(WKNavigationResponsePolicyDownload);
         return;
     }
     decisionHandler(WKNavigationResponsePolicyAllow);

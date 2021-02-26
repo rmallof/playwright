@@ -3,17 +3,22 @@
   "browsers": [
     {
       "name": "chromium",
-      "revision": "823944",
+      "revision": "854489",
       "download": true
     },
     {
       "name": "firefox",
-      "revision": "1205",
+      "revision": "1234",
       "download": true
     },
     {
       "name": "webkit",
-      "revision": "1383",
+      "revision": "1442",
+      "download": true
+    },
+    {
+      "name": "ffmpeg",
+      "revision": "1005",
       "download": true
     }
   ]

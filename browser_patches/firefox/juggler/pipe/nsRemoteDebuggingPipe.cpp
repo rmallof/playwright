@@ -11,6 +11,7 @@
 #else
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/socket.h>
 #endif
 
 #include "mozilla/StaticPtr.h"
@@ -109,8 +110,8 @@ nsresult nsRemoteDebuggingPipe::Init(nsIRemoteDebuggingPipeClient* aClient) {
 #if defined(_WIN32)
   CHAR pipeReadStr[20];
   CHAR pipeWriteStr[20];
-  GetEnvironmentVariable("PW_PIPE_READ", pipeReadStr, 20);
-  GetEnvironmentVariable("PW_PIPE_WRITE", pipeWriteStr, 20);
+  GetEnvironmentVariableA("PW_PIPE_READ", pipeReadStr, 20);
+  GetEnvironmentVariableA("PW_PIPE_WRITE", pipeWriteStr, 20);
   readHandle = reinterpret_cast<HANDLE>(atoi(pipeReadStr));
   writeHandle = reinterpret_cast<HANDLE>(atoi(pipeWriteStr));
 #endif
@@ -151,8 +152,13 @@ void nsRemoteDebuggingPipe::ReaderLoop() {
   std::vector<char> line;
   while (!m_terminated) {
     size_t size = ReadBytes(buffer.data(), bufSize, false);
-    if (!size)
+    if (!size) {
+      nsCOMPtr<nsIRunnable> runnable = NewRunnableMethod<>(
+          "nsRemoteDebuggingPipe::Disconnected",
+          this, &nsRemoteDebuggingPipe::Disconnected);
+      NS_DispatchToMainThread(runnable.forget());
       break;
+    }
     size_t start = 0;
     size_t end = line.size();
     line.insert(line.end(), buffer.begin(), buffer.begin() + size);
@@ -189,6 +195,12 @@ void nsRemoteDebuggingPipe::ReceiveMessage(const nsCString& aMessage) {
     NS_ConvertUTF8toUTF16 utf16(aMessage);
     mClient->ReceiveMessage(utf16);
   }
+}
+
+void nsRemoteDebuggingPipe::Disconnected() {
+  MOZ_RELEASE_ASSERT(NS_IsMainThread(), "Remote debugging pipe must be used on the Main thread.");
+  if (mClient)
+    mClient->Disconnected();
 }
 
 nsresult nsRemoteDebuggingPipe::SendMessage(const nsAString& aMessage) {

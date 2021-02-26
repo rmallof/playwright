@@ -29,7 +29,12 @@ if ! [[ -d $(dirname $ZIP_PATH) ]]; then
 fi
 
 main() {
-  cd checkout
+  if [[ ! -z "${WK_CHECKOUT_PATH}" ]]; then
+    cd "${WK_CHECKOUT_PATH}"
+    echo "WARNING: checkout path from WK_CHECKOUT_PATH env: ${WK_CHECKOUT_PATH}"
+  else
+    cd "checkout"
+  fi
 
   set -x
   if [[ "$(uname)" == "Darwin" ]]; then
@@ -73,7 +78,7 @@ createZipForLinux() {
 
 # see https://docs.microsoft.com/en-us/visualstudio/install/tools-for-managing-visual-studio-instances?view=vs-2019
 printMSVCRedistDir() {
-  local dll_file=$("$PROGRAMFILES\Microsoft Visual Studio\Installer\vswhere.exe" -latest -find '**\Redist\MSVC\*\x64\**\vcruntime140.dll')
+  local dll_file=$("C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -latest -find '**\Redist\MSVC\*\x64\**\vcruntime140.dll')
   local redist_dir=$(dirname "$dll_file")
   if ! [[ -d $redist_dir ]]; then
     echo "ERROR: cannot find MS VS C++ redistributable $redist_dir"
@@ -118,7 +123,6 @@ createZipForMac() {
   ditto {./WebKitBuild/Release,$tmpdir}/libwebrtc.dylib
   ditto {./WebKitBuild/Release,$tmpdir}/Playwright.app
   ditto {./WebKitBuild/Release,$tmpdir}/PluginProcessShim.dylib
-  ditto {./WebKitBuild/Release,$tmpdir}/SecItemShim.dylib
   ditto {./WebKitBuild/Release,$tmpdir}/WebCore.framework
   ditto {./WebKitBuild/Release,$tmpdir}/WebInspectorUI.framework
   ditto {./WebKitBuild/Release,$tmpdir}/WebKit.framework
@@ -126,6 +130,9 @@ createZipForMac() {
   ditto {$SCRIPTS_DIR,$tmpdir}/pw_run.sh
   # copy protocol
   node $SCRIPTS_DIR/concat_protocol.js > $tmpdir/protocol.json
+
+  # Remove all broken symlinks. @see https://github.com/microsoft/playwright/issues/5472
+  find "${tmpdir}" -type l ! -exec test -e {} \; -print | xargs rm
 
   # zip resulting directory and cleanup TMP.
   ditto -c -k $tmpdir $ZIP_PATH

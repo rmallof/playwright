@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-import { LaunchServerOptions } from './client/types';
+import { LaunchServerOptions, Logger } from './client/types';
 import { BrowserType } from './server/browserType';
 import * as ws from 'ws';
-import * as fs from 'fs';
+import fs from 'fs';
 import { Browser } from './server/browser';
 import { ChildProcess } from 'child_process';
 import { EventEmitter } from 'ws';
@@ -32,6 +32,8 @@ import { SelectorsDispatcher } from './dispatchers/selectorsDispatcher';
 import { Selectors } from './server/selectors';
 import { BrowserContext, Video } from './server/browserContext';
 import { StreamDispatcher } from './dispatchers/streamDispatcher';
+import { ProtocolLogger } from './server/types';
+import { CallMetadata, internalCallMetadata, SdkObject } from './server/instrumentation';
 
 export class BrowserServerLauncherImpl implements BrowserServerLauncher {
   private _browserType: BrowserType;
@@ -41,13 +43,13 @@ export class BrowserServerLauncherImpl implements BrowserServerLauncher {
   }
 
   async launchServer(options: LaunchServerOptions = {}): Promise<BrowserServerImpl> {
-    const browser = await this._browserType.launch({
+    const browser = await this._browserType.launch(internalCallMetadata(), {
       ...options,
       ignoreDefaultArgs: Array.isArray(options.ignoreDefaultArgs) ? options.ignoreDefaultArgs : undefined,
       ignoreAllDefaultArgs: !!options.ignoreDefaultArgs && !Array.isArray(options.ignoreDefaultArgs),
       env: options.env ? envObjectToArray(options.env) : undefined,
-    });
-    return new BrowserServerImpl(browser, options.port);
+    }, toProtocolLogger(options.logger));
+    return BrowserServerImpl.start(browser, options.port);
   }
 }
 
@@ -56,27 +58,36 @@ export class BrowserServerImpl extends EventEmitter implements BrowserServer {
   private _browser: Browser;
   private _wsEndpoint: string;
   private _process: ChildProcess;
+  private _ready: Promise<void>;
 
-  constructor(browser: Browser, port: number = 0) {
+  static async start(browser: Browser, port: number = 0): Promise<BrowserServerImpl> {
+    const server = new BrowserServerImpl(browser, port);
+    await server._ready;
+    return server;
+  }
+
+  constructor(browser: Browser, port: number) {
     super();
 
     this._browser = browser;
+    this._wsEndpoint = '';
+    this._process = browser.options.browserProcess.process!;
+
+    let readyCallback = () => {};
+    this._ready = new Promise<void>(f => readyCallback = f);
 
     const token = createGuid();
-    this._server = new ws.Server({ port });
-    const address = this._server.address();
-    this._wsEndpoint = typeof address === 'string' ? `${address}/${token}` : `ws://127.0.0.1:${address.port}/${token}`;
-    this._process = browser._options.browserProcess.process!;
+    this._server = new ws.Server({ port, path: '/' + token }, () => {
+      const address = this._server.address();
+      this._wsEndpoint = typeof address === 'string' ? `${address}/${token}` : `ws://127.0.0.1:${address.port}/${token}`;
+      readyCallback();
+    });
 
     this._server.on('connection', (socket: ws, req) => {
-      if (req.url !== '/' + token) {
-        socket.close();
-        return;
-      }
       this._clientAttached(socket);
     });
 
-    browser._options.browserProcess.onclose = (exitCode, signal) => {
+    browser.options.browserProcess.onclose = (exitCode, signal) => {
       this._server.close();
       this.emit('close', exitCode, signal);
     };
@@ -91,11 +102,11 @@ export class BrowserServerImpl extends EventEmitter implements BrowserServer {
   }
 
   async close(): Promise<void> {
-    await this._browser._options.browserProcess.close();
+    await this._browser.options.browserProcess.close();
   }
 
   async kill(): Promise<void> {
-    await this._browser._options.browserProcess.kill();
+    await this._browser.options.browserProcess.kill();
   }
 
   private _clientAttached(socket: ws) {
@@ -120,12 +131,12 @@ export class BrowserServerImpl extends EventEmitter implements BrowserServer {
   }
 }
 
-class RemoteBrowserDispatcher extends Dispatcher<{}, channels.RemoteBrowserInitializer> implements channels.PlaywrightChannel {
+class RemoteBrowserDispatcher extends Dispatcher<SdkObject, channels.RemoteBrowserInitializer> implements channels.PlaywrightChannel {
   readonly connectedBrowser: ConnectedBrowser;
 
   constructor(scope: DispatcherScope, browser: Browser, selectors: Selectors) {
     const connectedBrowser = new ConnectedBrowser(scope, browser, selectors);
-    super(scope, {}, 'RemoteBrowser', {
+    super(scope, browser, 'RemoteBrowser', {
       selectors: new SelectorsDispatcher(scope, selectors),
       browser: connectedBrowser,
     }, false, 'remoteBrowser');
@@ -145,12 +156,12 @@ class ConnectedBrowser extends BrowserDispatcher {
     this._selectors = selectors;
   }
 
-  async newContext(params: channels.BrowserNewContextParams): Promise<{ context: channels.BrowserContextChannel }> {
+  async newContext(params: channels.BrowserNewContextParams, metadata: CallMetadata): Promise<{ context: channels.BrowserContextChannel }> {
     if (params.recordVideo) {
       // TODO: we should create a separate temp directory or accept a launchServer parameter.
-      params.recordVideo.dir = this._object._options.downloadsPath!;
+      params.recordVideo.dir = this._object.options.downloadsPath!;
     }
-    const result = await super.newContext(params);
+    const result = await super.newContext(params, metadata);
     const dispatcher = result.context as BrowserContextDispatcher;
     dispatcher._object.on(BrowserContext.Events.VideoStarted, (video: Video) => this._sendVideo(dispatcher, video));
     dispatcher._object._setSelectors(this._selectors);
@@ -160,7 +171,7 @@ class ConnectedBrowser extends BrowserDispatcher {
 
   async close(): Promise<void> {
     // Only close our own contexts.
-    await Promise.all(this._contexts.map(context => context.close()));
+    await Promise.all(this._contexts.map(context => context.close({}, internalCallMetadata())));
     this._didClose();
   }
 
@@ -191,4 +202,11 @@ class ConnectedBrowser extends BrowserDispatcher {
       });
     });
   }
+}
+
+function toProtocolLogger(logger: Logger | undefined): ProtocolLogger | undefined {
+  return logger ? (direction: 'send' | 'receive', message: object) => {
+    if (logger.isEnabled('protocol', 'verbose'))
+      logger.log('protocol', 'verbose', (direction === 'send' ? 'SEND ► ' : '◀ RECV ') + JSON.stringify(message), [], {});
+  } : undefined;
 }

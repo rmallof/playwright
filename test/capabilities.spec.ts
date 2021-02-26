@@ -53,7 +53,8 @@ it('should respect CSP', async ({page, server}) => {
 
 it('should play video', (test, { browserName, platform }) => {
   test.fixme(browserName === 'webkit' && platform !== 'darwin');
-  test.fixme(browserName === 'webkit' && platform === 'darwin' && os.release() === '20.1.0');
+  // Doesnt' work on BigSur
+  test.fixme(browserName === 'webkit' && platform === 'darwin' && parseInt(os.release(), 10) >= 20);
 }, async ({page, asset, isWebKit}) => {
   // TODO: the test passes on Windows locally but fails on GitHub Action bot,
   // apparently due to a Media Pack issue in the Windows Server.
@@ -72,16 +73,17 @@ it('should play video', (test, { browserName, platform }) => {
 it('should support webgl', (test, {browserName, headful}) => {
   test.fixme(browserName === 'firefox' && !headful);
 }, async ({page}) => {
-  const hasWebGL2 = await page.evaluate(() => {
+  const hasWebGL = await page.evaluate(() => {
     const canvas = document.createElement('canvas');
     return !!canvas.getContext('webgl');
   });
-  expect(hasWebGL2).toBe(true);
+  expect(hasWebGL).toBe(true);
 });
 
 it('should support webgl 2', (test, {browserName, headful}) => {
   test.skip(browserName === 'webkit', 'Webkit doesn\'t have webgl2 enabled yet upstream.');
   test.fixme(browserName === 'firefox' && !headful);
+  test.fixme(browserName === 'chromium' && headful, 'chromium doesn\'t like webgl2 when running under xvfb');
 }, async ({page}) => {
   const hasWebGL2 = await page.evaluate(() => {
     const canvas = document.createElement('canvas');
