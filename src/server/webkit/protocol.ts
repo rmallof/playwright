@@ -908,7 +908,7 @@ export module Protocol {
      */
     export type LayoutContextType = "grid";
     /**
-     * The mode for how layout context type changes are handled. <code>Observed</code> limits handling to those nodes already known to the frontend by other means (generally, this means the node is a visible item in the Elements tab). <code>All</code> informs the frontend of all layout context type changes and.
+     * The mode for how layout context type changes are handled (default: <code>Observed</code>). <code>Observed</code> limits handling to those nodes already known to the frontend by other means (generally, this means the node is a visible item in the Elements tab). <code>All</code> informs the frontend of all layout context type changes and all nodes with a known layout context are sent to the frontend.
      */
     export type LayoutContextTypeChangedMode = "observed"|"all";
     
@@ -4107,8 +4107,8 @@ might return multiple quads for inline nodes.
     export type setDeviceMetricsOverrideParameters = {
       width: number;
       height: number;
-      deviceScaleFactor: number;
       fixedLayout: boolean;
+      deviceScaleFactor?: number;
     }
     export type setDeviceMetricsOverrideReturnValue = {
     }
@@ -4839,6 +4839,10 @@ the top of the viewport and Y increases as it proceeds towards the bottom of the
        * Composition due to association with an <iframe> element.
        */
       iFrame?: boolean;
+      /**
+       * Composition due to association with a <model> element.
+       */
+      model?: boolean;
       /**
        * Composition due to association with an element with a "backface-visibility: hidden" style.
        */
@@ -5980,6 +5984,10 @@ the top of the viewport and Y increases as it proceeds towards the bottom of the
      */
     export type Appearance = "Light"|"Dark";
     /**
+     * Page reduced-motion media query override.
+     */
+    export type ReducedMotion = "Reduce"|"NoPreference";
+    /**
      * Information about the Frame on the page.
      */
     export interface Frame {
@@ -6237,6 +6245,12 @@ the top of the viewport and Y increases as it proceeds towards the bottom of the
        * True if this AXNode corresponds with the ObjectId passed into acessibilitySnapshot.
        */
       found?: boolean;
+    }
+    export interface Insets {
+      top: number;
+      right: number;
+      bottom: number;
+      left: number;
     }
     
     export type domContentEventFiredPayload = {
@@ -6522,6 +6536,10 @@ the top of the viewport and Y increases as it proceeds towards the bottom of the
        * If `source` is provided (and not empty), it will be injected into all future global objects as soon as they're created. Omitting `source` will stop this from happening.
        */
       source?: string;
+      /**
+       * Isolated world name to evaluate the script in. If not specified main world will be used.
+       */
+      worldName?: string;
     }
     export type setBootstrapScriptReturnValue = {
     }
@@ -6625,6 +6643,14 @@ the top of the viewport and Y increases as it proceeds towards the bottom of the
     export type setForcedAppearanceReturnValue = {
     }
     /**
+     * Forces the reduced-motion media query for the page.
+     */
+    export type setForcedReducedMotionParameters = {
+      reducedMotion?: ReducedMotion;
+    }
+    export type setForcedReducedMotionReturnValue = {
+    }
+    /**
      * Enables time zone emulation.
      */
     export type setTimeZoneParameters = {
@@ -6682,6 +6708,10 @@ the top of the viewport and Y increases as it proceeds towards the bottom of the
        * Indicates the coordinate system of the supplied rectangle.
        */
       coordinateSystem: CoordinateSystem;
+      /**
+       * By default, screenshot is inflated by device scale factor to avoid blurry image. This flag disables it.
+       */
+      omitDeviceScaleFactor?: boolean;
     }
     export type snapshotRectReturnValue = {
       /**
@@ -6799,6 +6829,14 @@ the top of the viewport and Y increases as it proceeds towards the bottom of the
       angle?: number;
     }
     export type setOrientationOverrideReturnValue = {
+    }
+    export type setVisibleContentRectsParameters = {
+      unobscuredContentRect?: DOM.Rect;
+      contentInsets?: Insets;
+      obscuredInsets?: Insets;
+      unobscuredInsets?: Insets;
+    }
+    export type setVisibleContentRectsReturnValue = {
     }
   }
   
@@ -7202,7 +7240,7 @@ the top of the viewport and Y increases as it proceeds towards the bottom of the
      */
     export interface Frame {
       /**
-       * Information about an action made to the recorded object. Follows the structure [name, parameters, swizzleTypes, trace], where name is a string, parameters is an array, swizzleTypes is an array, and trace is an array.
+       * Information about an action made to the recorded object. Follows the structure [name, parameters, swizzleTypes, trace, snapshot], where name is a string, parameters is an array, swizzleTypes is an array, trace is an array, and snapshot is a data URL image of the current contents after this action.
        */
       actions: any[];
       /**
@@ -7767,6 +7805,10 @@ the top of the viewport and Y increases as it proceeds towards the bottom of the
        * Whether the expression should be considered to be in a user gesture or not.
        */
       emulateUserGesture?: boolean;
+      /**
+       * Whether to automatically await returned promise.
+       */
+      awaitPromise?: boolean;
     }
     export type callFunctionOnReturnValue = {
       /**
@@ -8009,20 +8051,29 @@ the top of the viewport and Y increases as it proceeds towards the bottom of the
      */
     export type ScreencastId = string;
     
+    export type screencastFramePayload = {
+      /**
+       * Base64 data
+       */
+      data: string;
+      deviceWidth: number;
+      deviceHeight: number;
+    }
     
     /**
      * Starts recoring video to speified file.
      */
-    export type startParameters = {
+    export type startVideoParameters = {
       /**
        * Output file location.
        */
       file: string;
       width: number;
       height: number;
+      toolbarHeight: number;
       scale?: number;
     }
-    export type startReturnValue = {
+    export type startVideoReturnValue = {
       /**
        * Unique identifier of the screencast.
        */
@@ -8031,9 +8082,39 @@ the top of the viewport and Y increases as it proceeds towards the bottom of the
     /**
      * Stops recoding video. Returns after the file has been closed.
      */
-    export type stopParameters = {
+    export type stopVideoParameters = {
     }
-    export type stopReturnValue = {
+    export type stopVideoReturnValue = {
+    }
+    /**
+     * Starts screencast.
+     */
+    export type startScreencastParameters = {
+      width: number;
+      height: number;
+      toolbarHeight: number;
+      quality: number;
+    }
+    export type startScreencastReturnValue = {
+      /**
+       * Screencast session generation.
+       */
+      generation: number;
+    }
+    /**
+     * Stops screencast.
+     */
+    export type stopScreencastParameters = {
+    }
+    export type stopScreencastReturnValue = {
+    }
+    export type screencastFrameAckParameters = {
+      /**
+       * Screencast session generation
+       */
+      generation: number;
+    }
+    export type screencastFrameAckReturnValue = {
     }
   }
   
@@ -8590,6 +8671,7 @@ the top of the viewport and Y increases as it proceeds towards the bottom of the
     "Playwright.downloadFinished": Playwright.downloadFinishedPayload;
     "Playwright.screencastFinished": Playwright.screencastFinishedPayload;
     "Runtime.executionContextCreated": Runtime.executionContextCreatedPayload;
+    "Screencast.screencastFrame": Screencast.screencastFramePayload;
     "ScriptProfiler.trackingStart": ScriptProfiler.trackingStartPayload;
     "ScriptProfiler.trackingUpdate": ScriptProfiler.trackingUpdatePayload;
     "ScriptProfiler.trackingComplete": ScriptProfiler.trackingCompletePayload;
@@ -8824,6 +8906,7 @@ the top of the viewport and Y increases as it proceeds towards the bottom of the
     "Page.setShowPaintRects": Page.setShowPaintRectsParameters;
     "Page.setEmulatedMedia": Page.setEmulatedMediaParameters;
     "Page.setForcedAppearance": Page.setForcedAppearanceParameters;
+    "Page.setForcedReducedMotion": Page.setForcedReducedMotionParameters;
     "Page.setTimeZone": Page.setTimeZoneParameters;
     "Page.setTouchEmulationEnabled": Page.setTouchEmulationEnabledParameters;
     "Page.snapshotNode": Page.snapshotNodeParameters;
@@ -8838,6 +8921,7 @@ the top of the viewport and Y increases as it proceeds towards the bottom of the
     "Page.setBypassCSP": Page.setBypassCSPParameters;
     "Page.crash": Page.crashParameters;
     "Page.setOrientationOverride": Page.setOrientationOverrideParameters;
+    "Page.setVisibleContentRects": Page.setVisibleContentRectsParameters;
     "Playwright.enable": Playwright.enableParameters;
     "Playwright.disable": Playwright.disableParameters;
     "Playwright.close": Playwright.closeParameters;
@@ -8872,8 +8956,11 @@ the top of the viewport and Y increases as it proceeds towards the bottom of the
     "Runtime.enableControlFlowProfiler": Runtime.enableControlFlowProfilerParameters;
     "Runtime.disableControlFlowProfiler": Runtime.disableControlFlowProfilerParameters;
     "Runtime.getBasicBlocks": Runtime.getBasicBlocksParameters;
-    "Screencast.start": Screencast.startParameters;
-    "Screencast.stop": Screencast.stopParameters;
+    "Screencast.startVideo": Screencast.startVideoParameters;
+    "Screencast.stopVideo": Screencast.stopVideoParameters;
+    "Screencast.startScreencast": Screencast.startScreencastParameters;
+    "Screencast.stopScreencast": Screencast.stopScreencastParameters;
+    "Screencast.screencastFrameAck": Screencast.screencastFrameAckParameters;
     "ScriptProfiler.startTracking": ScriptProfiler.startTrackingParameters;
     "ScriptProfiler.stopTracking": ScriptProfiler.stopTrackingParameters;
     "ServiceWorker.getInitializationInfo": ServiceWorker.getInitializationInfoParameters;
@@ -9112,6 +9199,7 @@ the top of the viewport and Y increases as it proceeds towards the bottom of the
     "Page.setShowPaintRects": Page.setShowPaintRectsReturnValue;
     "Page.setEmulatedMedia": Page.setEmulatedMediaReturnValue;
     "Page.setForcedAppearance": Page.setForcedAppearanceReturnValue;
+    "Page.setForcedReducedMotion": Page.setForcedReducedMotionReturnValue;
     "Page.setTimeZone": Page.setTimeZoneReturnValue;
     "Page.setTouchEmulationEnabled": Page.setTouchEmulationEnabledReturnValue;
     "Page.snapshotNode": Page.snapshotNodeReturnValue;
@@ -9126,6 +9214,7 @@ the top of the viewport and Y increases as it proceeds towards the bottom of the
     "Page.setBypassCSP": Page.setBypassCSPReturnValue;
     "Page.crash": Page.crashReturnValue;
     "Page.setOrientationOverride": Page.setOrientationOverrideReturnValue;
+    "Page.setVisibleContentRects": Page.setVisibleContentRectsReturnValue;
     "Playwright.enable": Playwright.enableReturnValue;
     "Playwright.disable": Playwright.disableReturnValue;
     "Playwright.close": Playwright.closeReturnValue;
@@ -9160,8 +9249,11 @@ the top of the viewport and Y increases as it proceeds towards the bottom of the
     "Runtime.enableControlFlowProfiler": Runtime.enableControlFlowProfilerReturnValue;
     "Runtime.disableControlFlowProfiler": Runtime.disableControlFlowProfilerReturnValue;
     "Runtime.getBasicBlocks": Runtime.getBasicBlocksReturnValue;
-    "Screencast.start": Screencast.startReturnValue;
-    "Screencast.stop": Screencast.stopReturnValue;
+    "Screencast.startVideo": Screencast.startVideoReturnValue;
+    "Screencast.stopVideo": Screencast.stopVideoReturnValue;
+    "Screencast.startScreencast": Screencast.startScreencastReturnValue;
+    "Screencast.stopScreencast": Screencast.stopScreencastReturnValue;
+    "Screencast.screencastFrameAck": Screencast.screencastFrameAckReturnValue;
     "ScriptProfiler.startTracking": ScriptProfiler.startTrackingReturnValue;
     "ScriptProfiler.stopTracking": ScriptProfiler.stopTrackingReturnValue;
     "ServiceWorker.getInitializationInfo": ServiceWorker.getInitializationInfoReturnValue;

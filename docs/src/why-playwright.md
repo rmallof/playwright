@@ -15,7 +15,7 @@ Playwright enables fast, reliable and capable automation across all modern brows
 
 * **Test for mobile**. Use [device emulation](./emulation.md) to test your responsive web apps in mobile web browsers.
 
-* **Headless and headful**. Playwright supports headless (without browser UI) and headful (with browser UI) modes for all browsers and all platforms. Headful is great for debugging, and headless is faster and suited for CI/cloud executions.
+* **Headless and headed**. Playwright supports headless (without browser UI) and headed (with browser UI) modes for all browsers and all platforms. Headed is great for debugging, and headless is faster and suited for CI/cloud executions.
 
 ## Fast and reliable execution
 * **Auto-wait APIs**. Playwright interactions [auto-wait for elements](./actionability.md) to be ready. This improves reliability and simplifies test authoring.
@@ -37,12 +37,12 @@ Playwright enables fast, reliable and capable automation across all modern brows
 
 ## Integrates with your workflow
 * **One-line installation**. Installing Playwright auto-downloads browser dependencies for your team to be onboarded quickly.
-  ```sh js
-  $ npm i playwright
+  ```bash js
+  npm i playwright
   ```
-  ```sh python
-  $ pip install playwright
-  $ playwright install
+  ```bash python
+  pip install playwright
+  playwright install
   ```
 
 * **TypeScript support**. Playwright ships with built-in types for auto-completion and other benefits.

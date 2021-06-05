@@ -14,58 +14,67 @@
  * limitations under the License.
  */
 
+import { HttpServer } from '../../utils/httpServer';
 import { BrowserContext } from '../browserContext';
-import { ContextResources, FrameSnapshot } from './snapshot';
+import { helper } from '../helper';
+import { Page } from '../page';
+import { FrameSnapshot, ResourceSnapshot } from './snapshotTypes';
 import { SnapshotRenderer } from './snapshotRenderer';
-import { NetworkResponse, SnapshotStorage } from './snapshotServer';
-import { Snapshotter, SnapshotterBlob, SnapshotterDelegate, SnapshotterResource } from './snapshotter';
+import { SnapshotServer } from './snapshotServer';
+import { BaseSnapshotStorage } from './snapshotStorage';
+import { Snapshotter, SnapshotterBlob, SnapshotterDelegate } from './snapshotter';
+import { ElementHandle } from '../dom';
 
-export class InMemorySnapshotter implements SnapshotStorage, SnapshotterDelegate {
+export class InMemorySnapshotter extends BaseSnapshotStorage implements SnapshotterDelegate {
   private _blobs = new Map<string, Buffer>();
-  private _resources = new Map<string, SnapshotterResource>();
-  private _frameSnapshots = new Map<string, FrameSnapshot[]>();
-  private _snapshots = new Map<string, SnapshotRenderer>();
-  private _contextResources: ContextResources = new Map();
+  private _server: HttpServer;
   private _snapshotter: Snapshotter;
 
   constructor(context: BrowserContext) {
+    super();
+    this._server = new HttpServer();
+    new SnapshotServer(this._server, this);
     this._snapshotter = new Snapshotter(context, this);
+  }
+
+  async initialize(): Promise<string> {
+    await this._snapshotter.start();
+    return await this._server.start();
+  }
+
+  async dispose() {
+    this._snapshotter.dispose();
+    await this._server.stop();
+  }
+
+  async captureSnapshot(page: Page, snapshotName: string, element?: ElementHandle): Promise<SnapshotRenderer> {
+    if (this._frameSnapshots.has(snapshotName))
+      throw new Error('Duplicate snapshot name: ' + snapshotName);
+
+    this._snapshotter.captureSnapshot(page, snapshotName, element).catch(() => {});
+    return new Promise<SnapshotRenderer>(fulfill => {
+      const listener = helper.addEventListener(this, 'snapshot', (renderer: SnapshotRenderer) => {
+        if (renderer.snapshotName === snapshotName) {
+          helper.removeEventListeners([listener]);
+          fulfill(renderer);
+        }
+      });
+    });
   }
 
   onBlob(blob: SnapshotterBlob): void {
     this._blobs.set(blob.sha1, blob.buffer);
   }
 
-  onResource(resource: SnapshotterResource): void {
-    this._resources.set(resource.resourceId, resource);
-    let resources = this._contextResources.get(resource.url);
-    if (!resources) {
-      resources = [];
-      this._contextResources.set(resource.url, resources);
-    }
-    resources.push({ frameId: resource.frameId, resourceId: resource.resourceId });
+  onResourceSnapshot(resource: ResourceSnapshot): void {
+    this.addResource(resource);
   }
 
   onFrameSnapshot(snapshot: FrameSnapshot): void {
-    const key = snapshot.pageId + '/' + snapshot.frameId;
-    let frameSnapshots = this._frameSnapshots.get(key);
-    if (!frameSnapshots) {
-      frameSnapshots = [];
-      this._frameSnapshots.set(key, frameSnapshots);
-    }
-    frameSnapshots.push(snapshot);
-    this._snapshots.set(snapshot.snapshotId, new SnapshotRenderer(new Map(this._contextResources), frameSnapshots, frameSnapshots.length - 1));
+    this.addFrameSnapshot(snapshot);
   }
 
   resourceContent(sha1: string): Buffer | undefined {
     return this._blobs.get(sha1);
-  }
-
-  resourceById(resourceId: string): NetworkResponse | undefined {
-    return this._resources.get(resourceId)!;
-  }
-
-  snapshotById(snapshotId: string): SnapshotRenderer | undefined {
-    return this._snapshots.get(snapshotId);
   }
 }

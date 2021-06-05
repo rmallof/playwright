@@ -30,7 +30,6 @@ Optional error code. Defaults to `failed`, could be one of the following:
 
 ## async method: Route.continue
 * langs:
-  - alias-csharp: resume
   - alias-java: resume
   - alias-python: continue_
 
@@ -54,7 +53,7 @@ page.route("**/*", route -> {
   Map<String, String> headers = new HashMap<>(route.request().headers());
   headers.put("foo", "bar"); // set "foo" header
   headers.remove("origin"); // remove "origin" header
-  route.resume(new Route.ResumeOptions().withHeaders(headers));
+  route.resume(new Route.ResumeOptions().setHeaders(headers));
 });
 ```
 
@@ -66,7 +65,7 @@ async def handle(route, request):
         "foo": "bar" # set "foo" header
         "origin": None # remove "origin" header
     }
-    await route.continue(headers=headers)
+    await route.continue_(headers=headers)
 }
 await page.route("**/*", handle)
 ```
@@ -79,9 +78,18 @@ def handle(route, request):
         "foo": "bar" # set "foo" header
         "origin": None # remove "origin" header
     }
-    route.continue(headers=headers)
+    route.continue_(headers=headers)
 }
 page.route("**/*", handle)
+```
+
+```csharp
+await page.RouteAsync("**/*", route =>
+{
+    var headers = new Dictionary<string, string>(route.Request.Headers) { { "foo", "bar" } };
+    headers.Remove("origin");
+    route.ContinueAsync(headers);
+});
 ```
 
 ### option: Route.continue.url
@@ -123,9 +131,9 @@ await page.route('**/*', route => {
 ```java
 page.route("**/*", route -> {
   route.fulfill(new Route.FulfillOptions()
-    .withStatus(404)
-    .withContentType("text/plain")
-    .withBody("Not Found!"));
+    .setStatus(404)
+    .setContentType("text/plain")
+    .setBody("Not Found!"));
 });
 ```
 
@@ -143,6 +151,13 @@ page.route("**/*", lambda route: route.fulfill(
     body="not found!"))
 ```
 
+```csharp
+await page.RouteAsync("**/*", route => route.FulfillAsync(
+    status: 404,
+    contentType: "text/plain", 
+    body: "Not Found!"));
+```
+
 An example of serving static file:
 
 ```js
@@ -151,7 +166,7 @@ await page.route('**/xhr_endpoint', route => route.fulfill({ path: 'mock_data.js
 
 ```java
 page.route("**/xhr_endpoint", route -> route.fulfill(
-  new Route.FulfillOptions().withPath(Paths.get("mock_data.json")));
+  new Route.FulfillOptions().setPath(Paths.get("mock_data.json")));
 ```
 
 ```python async
@@ -160,6 +175,10 @@ await page.route("**/xhr_endpoint", lambda route: route.fulfill(path="mock_data.
 
 ```python sync
 page.route("**/xhr_endpoint", lambda route: route.fulfill(path="mock_data.json"))
+```
+
+```csharp
+await page.RouteAsync("**/xhr_endpoint", route => route.FulfillAsync(new RouteFulfillOptions { Path = "mock_data.json" }));
 ```
 
 ### option: Route.fulfill.status

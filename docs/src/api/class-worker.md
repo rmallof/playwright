@@ -37,6 +37,20 @@ for worker in page.workers:
     print("    " + worker.url)
 ```
 
+```csharp
+page.Worker += (_, worker) =>
+{
+    Console.WriteLine($"Worker created: {worker.Url}");
+    worker.Close += (_, _) => Console.WriteLine($"Worker closed {worker.Url}");
+};
+
+Console.WriteLine("Current Workers:");
+foreach(var pageWorker in page.Workers)
+{
+    Console.WriteLine($"\tWorker: {pageWorker.Url}");
+}
+```
+
 ## event: Worker.close
 - argument: <[Worker]>
 
@@ -82,8 +96,8 @@ Optional argument to pass to [`param: expression`].
 ## method: Worker.url
 - returns: <[string]>
 
-## method: Worker.waitForClose
-* langs: csharp, java
+## async method: Worker.waitForClose
+* langs: java
 - returns: <[Worker]>
 
 Performs action and waits for the Worker to close.

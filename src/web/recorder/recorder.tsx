@@ -34,7 +34,7 @@ declare global {
 export interface RecorderProps {
   sources: Source[],
   paused: boolean,
-  log: Map<number, CallLog>,
+  log: Map<string, CallLog>,
   mode: Mode,
   initialSelector?: string,
 }
@@ -81,19 +81,19 @@ export const Recorder: React.FC<RecorderProps> = ({
   return <div className='recorder'>
     <Toolbar>
       <ToolbarButton icon='record' title='Record' toggled={mode == 'recording'} onClick={() => {
-        window.dispatch({ event: 'setMode', params: { mode: mode === 'recording' ? 'none' : 'recording' }}).catch(() => { });
+        window.dispatch({ event: 'setMode', params: { mode: mode === 'recording' ? 'none' : 'recording' }});
       }}>Record</ToolbarButton>
       <ToolbarButton icon='files' title='Copy' disabled={!source || !source.text} onClick={() => {
         copy(source.text);
       }}></ToolbarButton>
       <ToolbarButton icon='debug-continue' title='Resume' disabled={!paused} onClick={() => {
-        window.dispatch({ event: 'resume' }).catch(() => {});
+        window.dispatch({ event: 'resume' });
       }}></ToolbarButton>
       <ToolbarButton icon='debug-pause' title='Pause' disabled={paused} onClick={() => {
-        window.dispatch({ event: 'pause' }).catch(() => {});
+        window.dispatch({ event: 'pause' });
       }}></ToolbarButton>
       <ToolbarButton icon='debug-step-over' title='Step over' disabled={!paused} onClick={() => {
-        window.dispatch({ event: 'step' }).catch(() => {});
+        window.dispatch({ event: 'step' });
       }}></ToolbarButton>
       <select className='recorder-chooser' hidden={!sources.length} value={file} onChange={event => {
           setFile(event.target.selectedOptions[0].value);
@@ -106,7 +106,7 @@ export const Recorder: React.FC<RecorderProps> = ({
       </select>
       <div style={{flex: 'auto'}}></div>
       <ToolbarButton icon='clear-all' title='Clear' disabled={!source || !source.text} onClick={() => {
-        window.dispatch({ event: 'clear' }).catch(() => {});
+        window.dispatch({ event: 'clear' });
       }}></ToolbarButton>
     </Toolbar>
     <SplitView sidebarSize={200} sidebarHidden={mode === 'recording'}>
@@ -121,7 +121,7 @@ export const Recorder: React.FC<RecorderProps> = ({
             window.dispatch({ event: 'selectorUpdated', params: { selector: event.target.value } });
           }} />
         </Toolbar>
-        <CallLogView log={[...log.values()]}/>
+        <CallLogView log={Array.from(log.values())}/>
       </div>
     </SplitView>
   </div>;

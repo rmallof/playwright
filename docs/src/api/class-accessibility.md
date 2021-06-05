@@ -1,4 +1,5 @@
 # class: Accessibility
+* langs: csharp, js, python
 
 The Accessibility class provides methods for inspecting Chromium's accessibility tree. The accessibility tree is used by
 assistive technology such as [screen readers](https://en.wikipedia.org/wiki/Screen_reader) or
@@ -7,7 +8,7 @@ assistive technology such as [screen readers](https://en.wikipedia.org/wiki/Scre
 Accessibility is a very platform-specific thing. On different platforms, there are different screen readers that might
 have wildly different output.
 
-Rendering engines of Chromium, Firefox and Webkit have a concept of "accessibility tree", which is then translated into different
+Rendering engines of Chromium, Firefox and WebKit have a concept of "accessibility tree", which is then translated into different
 platform-specific APIs. Accessibility namespace gives access to this Accessibility Tree.
 
 Most of the accessibility tree gets filtered out when converting from internal browser AX Tree to Platform-specific AX-Tree or by
@@ -73,6 +74,11 @@ snapshot = page.accessibility.snapshot()
 print(snapshot)
 ```
 
+```csharp
+var accessibilitySnapshot = await page.Accessibility.SnapshotAsync();
+Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(accessibilitySnapshot));
+```
+
 An example of logging the focused node's name:
 
 ```js
@@ -89,6 +95,11 @@ function findFocusedNode(node) {
   }
   return null;
 }
+```
+
+```csharp
+var accessibilitySnapshot = await page.Accessibility.SnapshotAsync();
+Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(accessibilitySnapshot));
 ```
 
 ```java
@@ -127,8 +138,12 @@ if node:
 ```
 
 ## async method: Accessibility.snapshot
-* langs: csharp, java
+* langs: java
 - returns: <[null]|[string]>
+
+## async method: Accessibility.snapshot
+* langs: csharp
+- returns: <[JsonElement?]>
 
 ### option: Accessibility.snapshot.interestingOnly
 - `interestingOnly` <[boolean]>

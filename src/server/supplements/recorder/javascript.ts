@@ -19,7 +19,7 @@ import { LanguageGenerator, LanguageGeneratorOptions, sanitizeDeviceOptions, toS
 import { ActionInContext } from './codeGenerator';
 import { Action, actionTitle } from './recorderActions';
 import { MouseClickOptions, toModifiers } from './utils';
-import deviceDescriptors = require('../../deviceDescriptors');
+import deviceDescriptors from '../../deviceDescriptors';
 
 export class JavaScriptLanguageGenerator implements LanguageGenerator {
   id = 'javascript';
@@ -35,7 +35,7 @@ export class JavaScriptLanguageGenerator implements LanguageGenerator {
     if (action.name === 'openPage') {
       formatter.add(`const ${pageAlias} = await context.newPage();`);
       if (action.url && action.url !== 'about:blank' && action.url !== 'chrome://newtab/')
-        formatter.add(`${pageAlias}.goto('${action.url}');`);
+        formatter.add(`await ${pageAlias}.goto(${quote(action.url)});`);
       return formatter.format();
     }
 
@@ -193,7 +193,7 @@ function formatContextOptions(options: BrowserContextOptions, deviceName: string
   return lines.join('\n');
 }
 
-class JavaScriptFormatter {
+export class JavaScriptFormatter {
   private _baseIndent: string;
   private _baseOffset: string;
   private _lines: string[] = [];
@@ -224,10 +224,11 @@ class JavaScriptFormatter {
       if (line.startsWith('}') || line.startsWith(']'))
         spaces = spaces.substring(this._baseIndent.length);
 
-      const extraSpaces = /^(for|while|if).*\(.*\)$/.test(previousLine) ? this._baseIndent : '';
+      const extraSpaces = /^(for|while|if|try).*\(.*\)$/.test(previousLine) ? this._baseIndent : '';
       previousLine = line;
 
-      line = spaces + extraSpaces + line;
+      const callCarryOver = line.startsWith('.set');
+      line = spaces + extraSpaces + (callCarryOver ? this._baseIndent : '') + line;
       if (line.endsWith('{') || line.endsWith('['))
         spaces += this._baseIndent;
       return this._baseOffset + line;

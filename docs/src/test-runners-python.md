@@ -10,8 +10,8 @@ in Python.
 
 ## Usage
 
-```sh
-$ pip install pytest-playwright
+```bash
+pip install pytest-playwright
 ```
 
 Use the `page` fixture to write a basic test. See [more examples](#examples).
@@ -25,18 +25,18 @@ def test_example_is_working(page):
 
 To run your tests, use pytest CLI.
 
-```sh
+```bash
 # Run tests (Chromium and headless by default)
-$ pytest
+pytest
 
-# Run tests in headful mode
-$ pytest --headful
+# Run tests in headed mode
+pytest --headed
 
 # Run tests in a different browser (chromium, firefox, webkit)
-$ pytest --browser firefox
+pytest --browser firefox
 
 # Run tests in multiple browsers
-$ pytest --browser chromium --browser webkit
+pytest --browser chromium --browser webkit
 ```
 
 If you want to add the CLI arguments automatically without specifying them, you can use the [pytest.ini](https://docs.pytest.org/en/stable/reference.html#ini-options-ref) file:
@@ -45,7 +45,7 @@ If you want to add the CLI arguments automatically without specifying them, you 
 # content of pytest.ini
 [pytest]
 # Run firefox with UI
-addopts = --headful --browser firefox
+addopts = --headed --browser firefox
 
 ```
 
@@ -113,8 +113,8 @@ def test_visit_example(page):
 
 Start Pytest with the `base-url` argument.
 
-```sh
-$ pytest --base-url http://localhost:8080
+```bash
+pytest --base-url http://localhost:8080
 ```
 
 ```py
