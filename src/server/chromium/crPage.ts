@@ -39,6 +39,7 @@ import { rewriteErrorMessage } from '../../utils/stackTrace';
 import { assert, headersArrayToObject, createGuid, canAccessFile } from '../../utils/utils';
 import { VideoRecorder } from './videoRecorder';
 import { Progress } from '../progress';
+import { DragManager } from './crDragDrop';
 
 
 const UTILITY_WORLD_NAME = '__playwright_utility_world__';
@@ -76,8 +77,9 @@ export class CRPage implements PageDelegate {
     this._targetId = targetId;
     this._opener = opener;
     this._isBackgroundPage = isBackgroundPage;
-    this.rawKeyboard = new RawKeyboardImpl(client, browserContext._browser._isMac);
-    this.rawMouse = new RawMouseImpl(client);
+    const dragManager = new DragManager(this);
+    this.rawKeyboard = new RawKeyboardImpl(client, browserContext._browser._isMac, dragManager);
+    this.rawMouse = new RawMouseImpl(this, client, dragManager);
     this.rawTouchscreen = new RawTouchscreenImpl(client);
     this._pdf = new CRPDF(client);
     this._coverage = new CRCoverage(client);
@@ -480,7 +482,7 @@ class FrameSession {
           // Ignore lifecycle events for the initial empty page. It is never the final page
           // hence we are going to get more lifecycle updates after the actual navigation has
           // started (even if the target url is about:blank).
-          lifecycleEventsEnabled.then(() => {
+          lifecycleEventsEnabled.catch(e => {}).then(() => {
             this._eventListeners.push(helper.addEventListener(this._client, 'Page.lifecycleEvent', event => this._onLifecycleEvent(event)));
           });
         } else {

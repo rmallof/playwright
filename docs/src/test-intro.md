@@ -19,11 +19,30 @@ Playwright Test Runner was created specifically to accommodate the needs of the 
 
 ## Installation
 
-Playwright has its own test runner for end-to-end tests.
+Playwright has its own test runner for end-to-end tests, we call it Playwright Test.
 
 ```bash
 npm i -D @playwright/test
 ```
+
+:::note
+Playwright Test is self-contained, it does not need Playwright to be installed.
+If you are an existing Playwright user, make sure that you either uninstall
+Playwright or update Playwright before installing Playwright Test:
+
+```
+npm i -D playwright @playwright/test
+```
+:::
+
+
+Unlike Playwright, Playwright Test does not bundle browsers by default, so you need to install them explicitly:
+
+```bash
+npx playwright install
+```
+
+You can optionally install only selected browsers, see [Playwright CLI](./cli.md) for more details. Or you can install no browsers at all and use existing [browser channels](./browsers.md).
 
 ## First test
 
@@ -52,25 +71,25 @@ test('basic test', async ({ page }) => {
 Now run your tests, assuming that test files are in the `tests` directory.
 
 ```bash
-npx playwright test -c tests
+npx playwright test
 ```
 
 Playwright Test just ran a test using Chromium browser, in a headless manner. Let's tell it to use headed browser:
 
 ```bash
-npx playwright test -c tests --headed
+npx playwright test --headed
 ```
 
 What about other browsers? Let's run the same test using Firefox:
 
 ```bash
-npx playwright test -c tests --browser=firefox
+npx playwright test --browser=firefox
 ```
 
 And finally, on all three browsers:
 
 ```bash
-npx playwright test -c tests --browser=all
+npx playwright test --browser=all
 ```
 
 Refer to [configuration](./test-configuration.md) section for configuring test runs in different modes with different browsers.
@@ -256,9 +275,6 @@ test('my test', async ({ page }) => {
   // Expect an attribute "to be strictly equal" to the value.
   expect(await page.getAttribute('text=Get Started', 'href')).toBe('/docs/intro');
 
-  // Expect an element "to be visible".
-  expect(await page.isVisible('[aria-label="GitHub repository"]')).toBeTruthy();
-
   await page.click('text=Get Started');
   // Expect some text to be visible on the page.
   expect(await page.waitForSelector('text=System requirements')).toBeTruthy();
@@ -286,7 +302,7 @@ drwxr-xr-x  3 user  group   96 Jun  4 11:46 example.spec.ts-snapshots
 To update your golden files, you can use the `--update-snapshots` parameter.
 
 ```bash
-npx playwright test -c tests --update-snapshots
+npx playwright test --update-snapshots
 ```
 
 
@@ -407,11 +423,11 @@ import { PlaywrightTestConfig, devices } from '@playwright/test';
 const config: PlaywrightTestConfig = {
   projects: [
     {
-      name: 'Desktop Chromium',
+      name: 'Chrome Stable',
       use: {
         browserName: 'chromium',
-        // Test against Chrome Beta channel.
-        channel: 'chrome-beta',
+        // Test against Chrome Stable channel.
+        channel: 'chrome',
       },
     },
     {

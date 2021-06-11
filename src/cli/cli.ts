@@ -35,16 +35,40 @@ import { BrowserContextOptions, LaunchOptions } from '../client/types';
 import { spawn } from 'child_process';
 import { installDeps } from '../install/installDeps';
 import { allBrowserNames, BrowserName } from '../utils/registry';
-import { addTestCommand } from './testRunner';
 import * as utils from '../utils/utils';
 
 const SCRIPTS_DIRECTORY = path.join(__dirname, '..', '..', 'bin');
 
-type BrowserChannel = 'chrome-beta'|'chrome';
-const allBrowserChannels: Set<BrowserChannel> = new Set(['chrome-beta', 'chrome']);
+
+type BrowserChannel = 'chrome-beta'|'chrome'|'msedge';
+const allBrowserChannels: Set<BrowserChannel> = new Set(['chrome-beta', 'chrome', 'msedge']);
+const packageJSON = require('../../package.json');
+
+const ChannelName = {
+  'chrome-beta': 'Google Chrome Beta',
+  'chrome': 'Google Chrome',
+  'msedge': 'Microsoft Edge',
+};
+
+const InstallationScriptName = {
+  'chrome-beta': {
+    'linux': 'reinstall_chrome_beta_linux.sh',
+    'darwin': 'reinstall_chrome_beta_mac.sh',
+    'win32': 'reinstall_chrome_beta_win.ps1',
+  },
+  'chrome': {
+    'linux': 'reinstall_chrome_stable_linux.sh',
+    'darwin': 'reinstall_chrome_stable_mac.sh',
+    'win32': 'reinstall_chrome_stable_win.ps1',
+  },
+  'msedge': {
+    'darwin': 'reinstall_msedge_stable_mac.sh',
+    'win32': 'reinstall_msedge_stable_win.ps1',
+  },
+};
 
 program
-    .version('Version ' + require('../../package.json').version)
+    .version('Version ' + packageJSON.version)
     .name(process.env.PW_CLI_NAME || 'npx playwright');
 
 commandWithOpenOptions('open [url]', 'open page in browser specified via -b, --browser', [])
@@ -62,7 +86,7 @@ commandWithOpenOptions('open [url]', 'open page in browser specified via -b, --b
 commandWithOpenOptions('codegen [url]', 'open page and generate code for user actions',
     [
       ['-o, --output <file name>', 'saves the generated script to a file'],
-      ['--target <language>', `language to use, one of javascript, python, python-async, csharp`, language()],
+      ['--target <language>', `language to generate, one of javascript, test, python, python-async, csharp`, language()],
     ]).action(function(url, command) {
   codegen(command, url, command.target, command.output).catch(logErrorAndExit);
 }).on('--help', function() {
@@ -107,47 +131,46 @@ program
           console.log(`Invalid installation targets: ${faultyArguments.map(name => `'${name}'`).join(', ')}. Expecting one of: ${[...allBrowserNames, ...allBrowserChannels].map(name => `'${name}'`).join(', ')}`);
           process.exit(1);
         }
-        if (browserNames.has('chromium') || browserChannels.has('chrome-beta') || browserChannels.has('chrome'))
+        if (browserNames.has('chromium') || browserChannels.has('chrome-beta') || browserChannels.has('chrome') || browserChannels.has('msedge'))
           browserNames.add('ffmpeg');
         if (browserNames.size)
           await installBrowsers([...browserNames]);
-        for (const browserChannel of browserChannels) {
-          if (browserChannel === 'chrome-beta' || browserChannel === 'chrome')
-            await installChromeChannel(browserChannel);
-          else
-            throw new Error(`ERROR: no installation instructions for '${browserChannel}' channel.`);
-        }
+        for (const browserChannel of browserChannels)
+          await installBrowserChannel(browserChannel);
       } catch (e) {
         console.log(`Failed to install browsers\n${e}`);
         process.exit(1);
       }
     });
 
-async function installChromeChannel(channel: string) {
-  const platform: string = os.platform();
-  const shell: (string|undefined) = {
-    'linux': 'bash',
-    'darwin': 'bash',
-    'win32': 'powershell.exe',
-  }[platform];
-  const scriptName: (string|undefined) = ({
-    'chrome-beta': {
-      'linux': 'reinstall_chrome_beta_linux.sh',
-      'darwin': 'reinstall_chrome_beta_mac.sh',
-      'win32': 'reinstall_chrome_beta_win.ps1',
-    },
-    'chrome': {
-      'linux': 'reinstall_chrome_stable_linux.sh',
-      'darwin': 'reinstall_chrome_stable_mac.sh',
-      'win32': 'reinstall_chrome_stable_win.ps1',
-    },
-  }[channel] as any)[platform];
-  if (!shell || !scriptName)
-    throw new Error(`Cannot install chrome-beta on ${platform}`);
+async function installBrowserChannel(channel: BrowserChannel) {
+  const platform = os.platform();
+  const scriptName: (string|undefined) = (InstallationScriptName[channel] as any)[platform];
+  if (!scriptName)
+    throw new Error(`Cannot install ${ChannelName[channel]} on ${platform}`);
 
-  const {code} = await utils.spawnAsync(shell, [path.join(SCRIPTS_DIRECTORY, scriptName)], { cwd: SCRIPTS_DIRECTORY, stdio: 'inherit' });
+  const scriptArgs = [];
+  if (channel === 'msedge') {
+    const products = JSON.parse(await utils.fetchData('https://edgeupdates.microsoft.com/api/products'));
+    const stable = products.find((product: any) => product.Product === 'Stable');
+    if (platform === 'win32') {
+      const arch = os.arch() === 'x64' ? 'x64' : 'x86';
+      const release = stable.Releases.find((release: any) => release.Platform === 'Windows' && release.Architecture === arch);
+      const artifact = release.Artifacts.find((artifact: any) => artifact.ArtifactName === 'msi');
+      scriptArgs.push(artifact.Location /* url */);
+    } else if (platform === 'darwin') {
+      const release = stable.Releases.find((release: any) => release.Platform === 'MacOS' && release.Architecture === 'universal');
+      const artifact = release.Artifacts.find((artifact: any) => artifact.ArtifactName === 'pkg');
+      scriptArgs.push(artifact.Location /* url */);
+    } else {
+      throw new Error(`Cannot install ${ChannelName[channel]} on ${platform}`);
+    }
+  }
+
+  const shell = scriptName.endsWith('.ps1') ? 'powershell.exe' : 'bash';
+  const {code} = await utils.spawnAsync(shell, [path.join(SCRIPTS_DIRECTORY, scriptName), ...scriptArgs], { cwd: SCRIPTS_DIRECTORY, stdio: 'inherit' });
   if (code !== 0)
-    throw new Error('Failed to install chrome-beta');
+    throw new Error(`Failed to install ${ChannelName[channel]}`);
 }
 
 program
@@ -226,8 +249,31 @@ program
       console.log('  $ show-trace trace/directory');
     });
 
-if (!process.env.PW_CLI_TARGET_LANG)
-  addTestCommand(program);
+if (!process.env.PW_CLI_TARGET_LANG) {
+  let playwrightTestPackagePath = null;
+  try {
+    const isLocal = packageJSON.name === '@playwright/test' || process.env.PWTEST_CLI_ALLOW_TEST_COMMAND;
+    if (isLocal) {
+      playwrightTestPackagePath = '../test/cli';
+    } else {
+      playwrightTestPackagePath = require.resolve('@playwright/test/lib/test/cli', {
+        paths: [__dirname, process.cwd()]
+      });
+    }
+  } catch {}
+
+  if (playwrightTestPackagePath) {
+    require(playwrightTestPackagePath).addTestCommand(program);
+  } else {
+    const command = program.command('test');
+    command.description('Run tests with Playwright Test. Available in @playwright/test package.');
+    command.action(async (args, opts) => {
+      console.error('Please install @playwright/test package to use Playwright Test.');
+      console.error('  npm install -D @playwright/test');
+      process.exit(1);
+    });
+  }
+}
 
 if (process.argv[2] === 'run-driver')
   runDriver();
@@ -508,7 +554,7 @@ function logErrorAndExit(e: Error) {
 }
 
 function language(): string {
-  return process.env.PW_CLI_TARGET_LANG || 'javascript';
+  return process.env.PW_CLI_TARGET_LANG || 'test';
 }
 
 function commandWithOpenOptions(command: string, description: string, options: any[][]): program.Command {
